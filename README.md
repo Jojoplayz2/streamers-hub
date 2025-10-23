@@ -1,6 +1,6 @@
 # Streamers Hub GitHub
-Welcome to the Streamers Hub GitHub Repository!
-This space is dedicated to improving our Streamer Hub Discord Server by collecting community-driven feedback and tracking changes. Whether you’re a streamer, viewer, or community member, your voice helps shape the future of our server.
+> Welcome to the Streamers Hub GitHub Repository!
+> This space is dedicated to improving our Streamer Hub Discord Server by collecting community-driven feedback and tracking changes. Whether you’re a streamer, viewer, or community member, your voice helps shape the future of our server.
 
 **✅ What You Can Do Here**
 > You can open an Issue for the following:
@@ -24,4 +24,5 @@ This space is dedicated to improving our Streamer Hub Discord Server by collecti
 - Provide screenshots, clips, or steps to reproduce when possible
 
 **🤝 Community First**
-- This repository exists so our members can contribute to the direction of the community. Your feedback matters, and we’re excited to build something awesome together! If you have any urgent concerns, you may also open a support ticket in Discord.
+> This repository exists so our members can contribute to the direction of the community. Your feedback matters, and we’re excited to build something awesome together!
+> If you have any urgent concerns, you may also open a support ticket in Discord.
