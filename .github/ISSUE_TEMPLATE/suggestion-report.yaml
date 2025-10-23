@@ -1,0 +1,40 @@
+name: 📝 Internal Suggestion Report
+description: File an internal suggestion report.
+title: "[Suggestion]: "
+labels: ["suggestion"]
+projects: ["Roblox"]
+body:
+  - type: dropdown
+    id: service
+    attributes:
+      label: Which service do you want to suggest for?
+      multiple: false
+      options:
+        - ◾️ Roblox
+        - 🤖 Discord
+    validations:
+      required: true
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      multiple: true
+      options:
+        - Feature Request
+        - Improvement
+    validations:
+      required: true
+  - type: textarea
+    id: explanation
+    attributes:
+      label: Brief Explanation
+      description: What is your suggestion and how will it effect positively?
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Relevant Media
+      description: Please provide any media (screenshots, gifs, videos) that refer to what you are talking about.
+    validations:
+      required: false
