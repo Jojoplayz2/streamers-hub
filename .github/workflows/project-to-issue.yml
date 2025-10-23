@@ -1,123 +1,70 @@
-name: 🔁 Project → Issue state sync
+name: 🔁 Project → Issue Close Sync
 
 on:
   projects_v2_item:
-    types: [edited]   # fires when fields (like Status) change
+    types: [edited]
 
 permissions:
-  contents: read
   issues: write
   projects: read
 
 jobs:
   sync:
-    # Avoid loops: if the actor is the Actions bot, this is likely our own change
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Sync Issue state from ProjectV2 Status
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v7
         with:
           script: |
             const PROJECT_ID = "PVT_kwHODJwWRs4BGPB1";
             const STATUS_FIELD_ID = "PVTSSF_lAHODJwWRs4BGPB1zg3VyXg";
-
-            // Option IDs
             const OPT = {
-              ENTRY:        "f75ad846",
-              IN_PROGRESS:  "47fc9ee4",
-              DONE_COMPLETED:    "98236657",
-              DONE_NOT_PLANNED:  "13d5fa23",
-              DONE_DUPLICATE:    "8356ef49",
+              ENTRY: "f75ad846",
+              IN_PROGRESS: "47fc9ee4",
+              DONE_COMPLETED: "98236657",
+              DONE_NOT_PLANNED: "13d5fa23",
+              DONE_DUPLICATE: "8356ef49"
             };
 
-            // Payload basics
-            const item = context.payload.projects_v2_item;
-            if (!item) {
-              core.info("No projects_v2_item in payload; exiting.");
-              return;
-            }
+            const itemId = context.payload.projects_v2_item.node_id;
 
-            // Only act for your project
-            if (item.project_node_id !== PROJECT_ID) {
-              core.info("Different project; ignoring.");
-              return;
-            }
-
-            // We need the Status value on this item, and the content Issue node id
             const q = `
-              query($itemId: ID!, $statusFieldId: ID!) {
-                node(id: $itemId) {
+              query($id:ID!){
+                node(id:$id){
                   ... on ProjectV2Item {
-                    id
-                    content { __typename ... on Issue { id number state } }
-                    fieldValueByName(name: "Status") {
-                      ... on ProjectV2ItemFieldSingleSelectValue {
-                        field { ... on ProjectV2SingleSelectField { id name } }
-                        name
-                        optionId
-                      }
+                    content { __typename ... on Issue { id state } }
+                    fieldValueByName(name:"Status") {
+                      ... on ProjectV2ItemFieldSingleSelectValue { optionId }
                     }
                   }
                 }
               }`;
-            const data = await github.graphql(q, { itemId: item.node_id, statusFieldId: STATUS_FIELD_ID });
-            const node = data?.node;
-            if (!node?.content || node.content.__typename !== "Issue") {
-              core.info("Item is not an Issue; ignoring.");
-              return;
-            }
-            const issueId = node.content.id;
-            const issueState = (node.content.state || "").toLowerCase();
-            const statusOptionId = node.fieldValueByName?.optionId;
+            const data = await github.graphql(q, { id: itemId });
+            const issue = data.node.content;
+            const optionId = data.node.fieldValueByName?.optionId;
+            if (!issue || issue.__typename !== "Issue") return;
 
-            // If Status is Entry / In progress: ensure issue open (but don't reopen on every tiny move)
-            async function reopenIssueIfClosed() {
-              if (issueState === "closed") {
-                await github.graphql(`mutation($id:ID!){ reopenIssue(input:{issueId:$id}){ issue { id } } }`, { id: issueId });
-                // After reopen, your other workflow will set Status → Entry (R1), but we guard loops via actor != bot
-              }
-            }
-
-            // If Status is a Done flavor: close with matching reason
-            async function closeWithReason(reason) {
-              // GraphQL: closeIssue supports stateReason: COMPLETED | NOT_PLANNED | DUPLICATE
-              await github.graphql(
-                `mutation($id:ID!,$reason:IssueClosedStateReason!){
-                  closeIssue(input:{ issueId:$id, stateReason:$reason }){ issue { id } }
+            async function close(reason) {
+              return github.graphql(`
+                mutation($id:ID!,$reason:IssueClosedStateReason!){
+                  closeIssue(input:{issueId:$id,stateReason:$reason}){ issue{id} }
                 }`,
-                { id: issueId, reason }
+                { id: issue.id, reason }
+              );
+            }
+            async function reopen() {
+              return github.graphql(`
+                mutation($id:ID!){
+                  reopenIssue(input:{issueId:$id}){ issue{id} }
+                }`,
+                { id: issue.id }
               );
             }
 
-            if (statusOptionId === OPT.ENTRY) {
-              await reopenIssueIfClosed();
-              core.info("Status Entry → ensure issue open");
+            if (optionId === OPT.ENTRY || optionId === OPT.IN_PROGRESS) {
+              if (issue.state === "CLOSED") await reopen();
               return;
             }
-
-            if (statusOptionId === OPT.IN_PROGRESS) {
-              await reopenIssueIfClosed();
-              core.info("Status In progress → ensure issue open");
-              return;
-            }
-
-            if (statusOptionId === OPT.DONE_COMPLETED) {
-              await closeWithReason("COMPLETED");
-              core.info("Status Done - Completed → closed as completed");
-              return;
-            }
-
-            if (statusOptionId === OPT.DONE_NOT_PLANNED) {
-              await closeWithReason("NOT_PLANNED");
-              core.info("Status Done - Not planned → closed as not planned");
-              return;
-            }
-
-            if (statusOptionId === OPT.DONE_DUPLICATE) {
-              await closeWithReason("DUPLICATE");
-              core.info("Status Done - Duplicate → closed as duplicate");
-              return;
-            }
-
-            core.info("Status not recognized for sync; no action.");
+            if (optionId === OPT.DONE_COMPLETED) return close("COMPLETED");
+            if (optionId === OPT.DONE_NOT_PLANNED) return close("NOT_PLANNED");
+            if (optionId === OPT.DONE_DUPLICATE) return close("DUPLICATE");
