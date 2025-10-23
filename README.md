@@ -18,10 +18,10 @@ Each issue will be reviewed by staff, discussed if needed, and then approved, re
    
 **📌 Guidelines**
 To keep things organized and efficient:
--> Be clear and specific in your report or suggestion
--> Remain respectful and constructive
--> Check open issues before creating a duplicate
--> Provide screenshots, clips, or steps to reproduce when possible
+- Be clear and specific in your report or suggestion
+- Remain respectful and constructive
+- Check open issues before creating a duplicate
+- Provide screenshots, clips, or steps to reproduce when possible
 
 **🤝 Community First**
 This repository exists so our members can contribute to the direction of the community. Your feedback matters, and we’re excited to build something awesome together!
