@@ -22,4 +22,4 @@ Each issue will be reviewed by staff, discussed if needed, and then approved, re
 - Provide screenshots, clips, or steps to reproduce when possible
 
 **🤝 Community First**
-- This repository exists so our members can contribute to the direction of the community. Your feedback matters, and we’re excited to build something awesome together! If you have any urgent concerns, you may also open a support ticket in Discord.
+> This repository exists so our members can contribute to the direction of the community. Your feedback matters, and we’re excited to build something awesome together! If you have any urgent concerns, you may also open a support ticket in Discord.
