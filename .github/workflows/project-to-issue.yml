@@ -1,6 +1,8 @@
 name: 🔁 Project → Issue Status Sync
 
 on:
+  schedule:
+    - cron: "*/2 * * * *"
   workflow_run:
     workflows: ["🧭 Issue → Project Status Sync"]
     types: [completed]
@@ -10,7 +12,7 @@ permissions:
   projects: read
 
 jobs:
-  sync:
+  reverse_sync:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
