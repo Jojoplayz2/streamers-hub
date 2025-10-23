@@ -1,8 +1,9 @@
-name: 🔁 Project → Issue Close Sync
+name: 🔁 Project → Issue Status Sync
 
 on:
-  projects_v2_item:
-    types: [edited]
+  workflow_run:
+    workflows: ["🧭 Issue → Project Status Sync"]
+    types: [completed]
 
 permissions:
   issues: write
@@ -26,45 +27,76 @@ jobs:
               DONE_DUPLICATE: "8356ef49"
             };
 
-            const itemId = context.payload.projects_v2_item.node_id;
-
-            const q = `
-              query($id:ID!){
-                node(id:$id){
-                  ... on ProjectV2Item {
-                    content { __typename ... on Issue { id state } }
-                    fieldValueByName(name:"Status") {
-                      ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+            // Step 1: Find all items in this project that are Issues
+            const query = `
+              query($project: ID!) {
+                node(id: $project) {
+                  ... on ProjectV2 {
+                    items(first: 50) {
+                      nodes {
+                        id
+                        fieldValueByName(name: "Status") {
+                          ... on ProjectV2ItemFieldSingleSelectValue {
+                            optionId
+                          }
+                        }
+                        content {
+                          ... on Issue {
+                            id
+                            state
+                          }
+                        }
+                      }
                     }
                   }
                 }
               }`;
-            const data = await github.graphql(q, { id: itemId });
-            const issue = data.node.content;
-            const optionId = data.node.fieldValueByName?.optionId;
-            if (!issue || issue.__typename !== "Issue") return;
 
-            async function close(reason) {
-              return github.graphql(`
-                mutation($id:ID!,$reason:IssueClosedStateReason!){
-                  closeIssue(input:{issueId:$id,stateReason:$reason}){ issue{id} }
-                }`,
-                { id: issue.id, reason }
-              );
-            }
-            async function reopen() {
-              return github.graphql(`
-                mutation($id:ID!){
-                  reopenIssue(input:{issueId:$id}){ issue{id} }
-                }`,
-                { id: issue.id }
-              );
-            }
+            const data = await github.graphql(query, { project: PROJECT_ID });
+            const items = data.node.items.nodes;
 
-            if (optionId === OPT.ENTRY || optionId === OPT.IN_PROGRESS) {
-              if (issue.state === "CLOSED") await reopen();
-              return;
-            }
-            if (optionId === OPT.DONE_COMPLETED) return close("COMPLETED");
-            if (optionId === OPT.DONE_NOT_PLANNED) return close("NOT_PLANNED");
-            if (optionId === OPT.DONE_DUPLICATE) return close("DUPLICATE");
+            for (const item of items) {
+              const issue = item.content;
+              if (!issue) continue;
+              
+              const optionId = item.fieldValueByName?.optionId;
+              const isClosed = issue.state === "CLOSED";
+
+              // Step 2: Apply rules based on Status
+              if (optionId === OPT.ENTRY || optionId === OPT.IN_PROGRESS) {
+                // R-OPEN-1 (Always reopen on open statuses)
+                if (isClosed) {
+                  await github.graphql(`
+                    mutation($id:ID!) {
+                      reopenIssue(input:{issueId:$id}) { issue { id } }
+                    }`, { id: issue.id }
+                  );
+                }
+                continue;
+              }
+
+              if (optionId === OPT.DONE_COMPLETED) {
+                if (!isClosed) {
+                  await github.graphql(`
+                    mutation($id:ID!) {
+                      closeIssue(input:{issueId:$id, stateReason:COMPLETED}) { issue { id } }
+                    }`, { id: issue.id }
+                  );
+                }
+                continue;
+              }
+
+              if (optionId === OPT.DONE_NOT_PLANNED) {
+                if (!isClosed) {
+                  await github.graphql(`
+                    mutation($id:ID!) {
+                      closeIssue(input:{issueId:$id, stateReason:NOT_PLANNED}) { issue { id } }
+                    }`, { id: issue.id }
+                  );
+                }
+                continue;
+              }
+
+              if (optionId === OPT.DONE_DUPLICATE) {
+                if (!isClosed) {
+                  await github.graph
