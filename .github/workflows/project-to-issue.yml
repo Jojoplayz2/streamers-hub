@@ -1,0 +1,99 @@
+name: 🔁 Project → Issue close sync
+
+on:
+  projects_v2_item:
+    types: [edited]  # fires when fields (like Status) change
+
+jobs:
+  sync_project_to_issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      projects: read
+
+    steps:
+      - name: Close issue if Status moved to a Done option
+        uses: actions/github-script@v7
+        env:
+          PROJECT_ID: PVT_kwHODJwWRs4BGPB1
+          STATUS_FIELD_ID: PVTSSF_lAHODJwWRs4BGPB1zg3VyXg
+          OPT_DONE_COMPLETED: 98236657
+          OPT_DONE_NOT_PLANNED: 13d5fa23
+          OPT_DONE_DUPLICATE: 8356ef49
+        with:
+          script: |
+            const projectId = process.env.PROJECT_ID;
+            const statusFieldId = process.env.STATUS_FIELD_ID;
+
+            const DONE_MAP = {
+              [process.env.OPT_DONE_COMPLETED]: 'completed',
+              [process.env.OPT_DONE_NOT_PLANNED]: 'not_planned',
+              [process.env.OPT_DONE_DUPLICATE]: 'duplicate'
+            };
+
+            const itemNodeId = context.payload.projects_v2_item?.node_id;
+            if (!itemNodeId) {
+              return core.info('No item ID in event.');
+            }
+
+            // Fetch the item to get current Status + linked content (issue)
+            const data = await github.graphql(`
+              query($itemId: ID!) {
+                node(id: $itemId) {
+                  ... on ProjectV2Item {
+                    id
+                    project { id }
+                    content {
+                      __typename
+                      ... on Issue {
+                        id
+                        number
+                        repository { name owner { login } }
+                        state
+                        stateReason
+                      }
+                    }
+                    fieldValues(first: 20) {
+                      nodes {
+                        ... on ProjectV2ItemFieldSingleSelectValue {
+                          id
+                          field { ... on ProjectV2SingleSelectField { id name } }
+                          name
+                          optionId
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { itemId: itemNodeId });
+
+            const item = data?.node;
+            if (!item || item.project?.id !== projectId) {
+              return core.info('Item is not from the configured project. Ignoring.');
+            }
+
+            if (!item.content || item.content.__typename !== 'Issue') {
+              return core.info('Project item is not an Issue. Ignoring.');
+            }
+
+            // Find current Status select value for this item
+            const statusVal = (item.fieldValues?.nodes || []).find(v => v.field?.id === statusFieldId);
+            if (!statusVal?.optionId) {
+              return core.info('No Status option on item. Nothing to do.');
+            }
+
+            const reason = DONE_MAP[statusVal.optionId];
+            if (!reason) {
+              // Not one of the Done statuses → don't close
+              return core.info('Status is not a Done option. Leaving issue state unchanged.');
+            }
+
+            // Close the linked issue with the matching reason (idempotent)
+            const { number, repository } = item.content;
+            const owner = repository.owner.login;
+            const repo = repository.name;
+
+            // If already closed with same reason, do nothing
+            if (item.content.state === 'CLOSED' && (item.content.stateReason || '
