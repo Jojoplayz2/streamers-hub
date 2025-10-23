@@ -1,11 +1,10 @@
-name: 🧭 Issue → Project status sync
+name: 🧭 Issue → Project Status Sync
 
 on:
   issues:
     types: [opened, assigned, closed, reopened]
 
 permissions:
-  contents: read
   issues: write
   projects: write
 
@@ -13,103 +12,63 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Update ProjectV2 Status from Issue event
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v7
         with:
           script: |
             const PROJECT_ID = "PVT_kwHODJwWRs4BGPB1";
             const STATUS_FIELD_ID = "PVTSSF_lAHODJwWRs4BGPB1zg3VyXg";
-
-            // Single select option IDs (from your project)
             const OPT = {
-              ENTRY:        "f75ad846",
-              IN_PROGRESS:  "47fc9ee4",
-              DONE_COMPLETED:    "98236657",
-              DONE_NOT_PLANNED:  "13d5fa23",
-              DONE_DUPLICATE:    "8356ef49",
+              ENTRY: "f75ad846",
+              IN_PROGRESS: "47fc9ee4",
+              DONE_COMPLETED: "98236657",
+              DONE_NOT_PLANNED: "13d5fa23",
+              DONE_DUPLICATE: "8356ef49"
             };
 
             const issueNodeId = context.payload.issue.node_id;
             const action = context.payload.action;
 
-            // Helper: find the ProjectV2 item ID for this issue in your project
-            async function getProjectItemId() {
-              const q = `
-                query($issueId: ID!, $projectId: ID!) {
-                  node(id: $issueId) {
-                    ... on Issue {
-                      projectItemsV2(first: 20) {
-                        nodes { id project { id } }
-                      }
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            await sleep(1200); // wait for auto-add to finish
+
+            // Get Project Item ID
+            const q = `
+              query($issueId: ID!) {
+                node(id:$issueId) {
+                  ... on Issue {
+                    projectItemsV2(first:20) {
+                      nodes { id project { id } }
                     }
                   }
-                }`;
-              const data = await github.graphql(q, { issueId: issueNodeId, projectId: PROJECT_ID });
-              const nodes = data.node?.projectItemsV2?.nodes || [];
-              const item = nodes.find(n => n.project?.id === PROJECT_ID);
-              return item?.id || null;
-            }
+                }
+              }`;
+            const data = await github.graphql(q, { issueId: issueNodeId });
+            const item = data.node.projectItemsV2.nodes.find(n => n.project.id === PROJECT_ID);
+            if (!item) return;
 
-            async function setStatusOption(itemId, optionId) {
-              const mut = `
-                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $opt: String!) {
+            async function setOption(optionId) {
+              const m = `
+                mutation($pid:ID!,$item:ID!,$fid:ID!,$opt:String!) {
                   updateProjectV2ItemFieldValue(input:{
-                    projectId: $projectId,
-                    itemId: $itemId,
-                    fieldId: $fieldId,
-                    value:{ singleSelectOptionId: $opt }
+                    projectId:$pid,itemId:$item,fieldId:$fid,
+                    value:{singleSelectOptionId:$opt}
                   }) { projectV2Item { id } }
                 }`;
-              await github.graphql(mut, {
-                projectId: PROJECT_ID,
-                itemId,
-                fieldId: STATUS_FIELD_ID,
+              await github.graphql(m, {
+                pid: PROJECT_ID,
+                item: item.id,
+                fid: STATUS_FIELD_ID,
                 opt: optionId
               });
             }
 
-            // Wait briefly to ensure auto-add finished before we query the item
-            function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-            await sleep(1500);
-
-            const itemId = await getProjectItemId();
-            if (!itemId) {
-              core.info("Issue is not (yet) on the project; skipping status update.");
-              return;
-            }
-
-            // Map Issue events → Project Status
-            if (action === "opened") {
-              await setStatusOption(itemId, OPT.ENTRY);
-              core.info("Set Status → Entry");
-              return;
-            }
-
-            if (action === "assigned") {
-              // Do nothing on unassign per your preference; only when assigned
-              if (context.payload.assignee) {
-                await setStatusOption(itemId, OPT.IN_PROGRESS);
-                core.info("Set Status → In progress (assigned)");
-              }
-              return;
-            }
-
-            if (action === "reopened") {
-              // Your choice R1: reset to Entry on reopen
-              await setStatusOption(itemId, OPT.ENTRY);
-              core.info("Reopened → Status Entry");
-              return;
-            }
+            if (action === "opened") return setOption(OPT.ENTRY);
+            if (action === "assigned" && context.payload.assignee) return setOption(OPT.IN_PROGRESS);
+            if (action === "reopened") return setOption(OPT.ENTRY);
 
             if (action === "closed") {
-              // Respect the close reason chosen in the Issue UI
-              // state_reason can be 'completed' | 'not_planned' | 'duplicate' (or undefined)
               const sr = (context.payload.issue.state_reason || "").toLowerCase();
-              let optionId = OPT.DONE_COMPLETED; // default if missing
-              if (sr === "not_planned") optionId = OPT.DONE_NOT_PLANNED;
-              if (sr === "duplicate")   optionId = OPT.DONE_DUPLICATE;
-
-              await setStatusOption(itemId, optionId);
-              core.info(`Closed → Status set to matching Done option (${sr || "completed-default"})`);
-              return;
+              if (sr === "not_planned") return setOption(OPT.DONE_NOT_PLANNED);
+              if (sr === "duplicate") return setOption(OPT.DONE_DUPLICATE);
+              return setOption(OPT.DONE_COMPLETED);
             }
