@@ -2,7 +2,7 @@ name: 📝 Internal Suggestion Report
 description: File an internal suggestion report.
 title: "[Suggestion]: "
 labels: ["suggestion"]
-projects: ["Roblox"]
+projects: ["Streamers Hub"]
 body:
   - type: dropdown
     id: service
