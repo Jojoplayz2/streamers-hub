@@ -2,7 +2,7 @@ name: 👾 Internal Bug Report
 description: File an internal bug report.
 title: "[Bug]: "
 labels: ["bug"]
-projects: ["Roblox"]
+projects: ["Streamers Hub"]
 body:
   - type: dropdown
     id: service
