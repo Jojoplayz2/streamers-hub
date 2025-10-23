@@ -28,71 +28,111 @@ jobs:
             const issueNodeId = context.payload.issue.node_id;
             const action = context.payload.action;
 
-            // Give GitHub time to auto-add the issue to the project before querying
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-            await sleep(1500);
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-            // ✅ FIXED QUERY — uses projectsV2, not projectItemsV2
-            const query = `
-              query($issueId: ID!) {
-                node(id:$issueId) {
-                  ... on Issue {
-                    projectsV2(first:20) {
-                      nodes { id project { id } }
+            // --- Helpers ----------------------------------------------------
+            async function findItemIdViaProject(issueId) {
+              const q = `
+                query($project: ID!) {
+                  node(id: $project) {
+                    ... on ProjectV2 {
+                      items(first: 100) {
+                        nodes {
+                          id
+                          content { __typename ... on Issue { id } }
+                        }
+                      }
                     }
                   }
-                }
-              }`;
-
-            const data = await github.graphql(query, { issueId: issueNodeId });
-
-            // ✅ FIXED LOOKUP — uses projectsV2
-            const nodes = data?.node?.projectsV2?.nodes || [];
-            const item = nodes.find(n => n.project.id === PROJECT_ID);
-            if (!item) {
-              core.info("Project item not found yet — skipping.");
-              return;
+                }`;
+              const data = await github.graphql(q, { project: PROJECT_ID });
+              const items = data?.node?.items?.nodes || [];
+              const match = items.find(n => n.content?.__typename === "Issue" && n.content.id === issueId);
+              return match?.id || null;
             }
 
-            async function setStatus(optionId) {
-              const mutation = `
-                mutation($project:ID!,$item:ID!,$field:ID!,$opt:String!) {
-                  updateProjectV2ItemFieldValue(input:{
-                    projectId:$project,
-                    itemId:$item,
-                    fieldId:$field,
-                    value:{singleSelectOptionId:$opt}
-                  }) {
-                    projectV2Item { id }
+            async function addIssueToProject(issueId) {
+              const m = `
+                mutation($project: ID!, $content: ID!) {
+                  addProjectV2ItemById(input: { projectId: $project, contentId: $content }) {
+                    item { id }
                   }
                 }`;
-              await github.graphql(mutation, {
+              const added = await github.graphql(m, { project: PROJECT_ID, content: issueId });
+              return added?.addProjectV2ItemById?.item?.id || null;
+            }
+
+            async function setStatus(itemId, optionId) {
+              const m = `
+                mutation($project: ID!, $item: ID!, $field: ID!, $opt: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $project,
+                    itemId: $item,
+                    fieldId: $field,
+                    value: { singleSelectOptionId: $opt }
+                  }) { projectV2Item { id } }
+                }`;
+              await github.graphql(m, {
                 project: PROJECT_ID,
-                item: item.id,
+                item: itemId,
                 field: STATUS_FIELD_ID,
                 opt: optionId
               });
             }
 
-            // ✅ Event → Status logic
+            // --- Ensure we have a project item ID --------------------------
+            let itemId = null;
+
+            // 1) Give auto-add a moment, then try to find it
+            for (let i = 0; i < 5 && !itemId; i++) {
+              if (i > 0) await sleep(800);
+              itemId = await findItemIdViaProject(issueNodeId);
+            }
+
+            // 2) If still not found, add it ourselves and re-check once
+            if (!itemId) {
+              core.info("Item not found; adding issue to project ourselves…");
+              await addIssueToProject(issueNodeId);
+              await sleep(800);
+              itemId = await findItemIdViaProject(issueNodeId);
+            }
+
+            if (!itemId) {
+              core.notice("Could not locate or add the project item for this issue. Skipping.");
+              return;
+            }
+
+            // --- Event → Status mapping ------------------------------------
             if (action === "opened") {
-              await setStatus(OPT.ENTRY);
+              await setStatus(itemId, OPT.ENTRY);
               return;
             }
 
             if (action === "assigned" && context.payload.assignee) {
-              await setStatus(OPT.IN_PROGRESS);
+              await setStatus(itemId, OPT.IN_PROGRESS);
+              return;
+            }
+
+            if (action === "unassigned") {
+              // Your earlier preference was "do nothing on unassign"; if you want Entry instead, uncomment:
+              // await setStatus(itemId, OPT.ENTRY);
               return;
             }
 
             if (action === "reopened") {
-              await setStatus(OPT.ENTRY);
+              await setStatus(itemId, OPT.ENTRY);
               return;
             }
 
             if (action === "closed") {
               const reason = (context.payload.issue.state_reason || "").toLowerCase();
-              if (reason === "not_planned") return setStatus(OPT.DONE_NOT_PLANNED);
-              if (reason === "duplicate") return setStatus(OPT.DONE_DUPLICATE);
-              return setStatus(OPT.DONE_COMPLETED);
+              if (reason === "not_planned") { await setStatus(itemId, OPT.DONE_NOT_PLANNED); return; }
+              if (reason === "duplicate")   { await setStatus(itemId, OPT.DONE_DUPLICATE);   return; }
+              await setStatus(itemId, OPT.DONE_COMPLETED);
+              return;
             }
+
+            // Edited (optional): if you want edits to imply "In progress", uncomment:
+            // if (action === "edited") {
+            //   await setStatus(itemId, OPT.IN_PROGRESS);
+            // }
