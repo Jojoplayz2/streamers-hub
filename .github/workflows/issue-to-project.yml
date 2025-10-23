@@ -28,47 +28,71 @@ jobs:
             const issueNodeId = context.payload.issue.node_id;
             const action = context.payload.action;
 
+            // Give GitHub time to auto-add the issue to the project before querying
             const sleep = ms => new Promise(r => setTimeout(r, ms));
-            await sleep(1200); // wait for auto-add to finish
+            await sleep(1500);
 
-            // Get Project Item ID
-            const q = `
+            // ✅ FIXED QUERY — uses projectsV2, not projectItemsV2
+            const query = `
               query($issueId: ID!) {
                 node(id:$issueId) {
                   ... on Issue {
-                    projectItemsV2(first:20) {
+                    projectsV2(first:20) {
                       nodes { id project { id } }
                     }
                   }
                 }
               }`;
-            const data = await github.graphql(q, { issueId: issueNodeId });
-            const item = data.node.projectItemsV2.nodes.find(n => n.project.id === PROJECT_ID);
-            if (!item) return;
 
-            async function setOption(optionId) {
-              const m = `
-                mutation($pid:ID!,$item:ID!,$fid:ID!,$opt:String!) {
+            const data = await github.graphql(query, { issueId: issueNodeId });
+
+            // ✅ FIXED LOOKUP — uses projectsV2
+            const nodes = data?.node?.projectsV2?.nodes || [];
+            const item = nodes.find(n => n.project.id === PROJECT_ID);
+            if (!item) {
+              core.info("Project item not found yet — skipping.");
+              return;
+            }
+
+            async function setStatus(optionId) {
+              const mutation = `
+                mutation($project:ID!,$item:ID!,$field:ID!,$opt:String!) {
                   updateProjectV2ItemFieldValue(input:{
-                    projectId:$pid,itemId:$item,fieldId:$fid,
+                    projectId:$project,
+                    itemId:$item,
+                    fieldId:$field,
                     value:{singleSelectOptionId:$opt}
-                  }) { projectV2Item { id } }
+                  }) {
+                    projectV2Item { id }
+                  }
                 }`;
-              await github.graphql(m, {
-                pid: PROJECT_ID,
+              await github.graphql(mutation, {
+                project: PROJECT_ID,
                 item: item.id,
-                fid: STATUS_FIELD_ID,
+                field: STATUS_FIELD_ID,
                 opt: optionId
               });
             }
 
-            if (action === "opened") return setOption(OPT.ENTRY);
-            if (action === "assigned" && context.payload.assignee) return setOption(OPT.IN_PROGRESS);
-            if (action === "reopened") return setOption(OPT.ENTRY);
+            // ✅ Event → Status logic
+            if (action === "opened") {
+              await setStatus(OPT.ENTRY);
+              return;
+            }
+
+            if (action === "assigned" && context.payload.assignee) {
+              await setStatus(OPT.IN_PROGRESS);
+              return;
+            }
+
+            if (action === "reopened") {
+              await setStatus(OPT.ENTRY);
+              return;
+            }
 
             if (action === "closed") {
-              const sr = (context.payload.issue.state_reason || "").toLowerCase();
-              if (sr === "not_planned") return setOption(OPT.DONE_NOT_PLANNED);
-              if (sr === "duplicate") return setOption(OPT.DONE_DUPLICATE);
-              return setOption(OPT.DONE_COMPLETED);
+              const reason = (context.payload.issue.state_reason || "").toLowerCase();
+              if (reason === "not_planned") return setStatus(OPT.DONE_NOT_PLANNED);
+              if (reason === "duplicate") return setStatus(OPT.DONE_DUPLICATE);
+              return setStatus(OPT.DONE_COMPLETED);
             }
