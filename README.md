@@ -2,8 +2,7 @@
 Welcome to the Streamers Hub GitHub Repository!
 This space is dedicated to improving our Streamer Hub Discord Server by collecting community-driven feedback and tracking changes. Whether you’re a streamer, viewer, or community member, your voice helps shape the future of our server.
 
-**✅ What You Can Do Here**
-You can open an Issue for the following:
+**✅ What You Can Do Here**  |  You can open an Issue for the following:
 - 🐛 Bug Report --- Report server issues, broken features, or technical problems
 - 💡 Suggestion/Feature Request --- Submit ideas, improvements, or new feature proposals
 - ❓ Question / Support --- Ask for help, request clarification, or get support
@@ -16,8 +15,7 @@ Each issue will be reviewed by staff, discussed if needed, and then approved, re
 4) Fill it out with as much detail as possible
 5) Submit — we’ll take it from there!
    
-**📌 Guidelines**
-To keep things organized and efficient:
+**📌 Guidelines**  |  To keep things organized and efficient:
 - Be clear and specific in your report or suggestion
 - Remain respectful and constructive
 - Check open issues before creating a duplicate
