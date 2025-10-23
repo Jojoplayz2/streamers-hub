@@ -4,9 +4,9 @@ This space is dedicated to improving our Streamer Hub Discord Server by collecti
 
 **✅ What You Can Do Here**
 You can open an Issue for the following:
--> 🐛 Bug Report --- Report server issues, broken features, or technical problems
--> 💡 Suggestion/Feature Request --- Submit ideas, improvements, or new feature proposals
--> ❓ Question / Support --- Ask for help, request clarification, or get support
+- 🐛 Bug Report --- Report server issues, broken features, or technical problems
+- 💡 Suggestion/Feature Request --- Submit ideas, improvements, or new feature proposals
+- ❓ Question / Support --- Ask for help, request clarification, or get support
 Each issue will be reviewed by staff, discussed if needed, and then approved, rejected, or scheduled for future development.
 
 **🧭 How to Get Started**
