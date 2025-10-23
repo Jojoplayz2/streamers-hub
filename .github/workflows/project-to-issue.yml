@@ -1,99 +1,123 @@
-name: 🔁 Project → Issue close sync
+name: 🔁 Project → Issue state sync
 
 on:
   projects_v2_item:
-    types: [edited]  # fires when fields (like Status) change
+    types: [edited]   # fires when fields (like Status) change
+
+permissions:
+  contents: read
+  issues: write
+  projects: read
 
 jobs:
-  sync_project_to_issue:
+  sync:
+    # Avoid loops: if the actor is the Actions bot, this is likely our own change
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      contents: read
-      projects: read
-
     steps:
-      - name: Close issue if Status moved to a Done option
+      - name: Sync Issue state from ProjectV2 Status
         uses: actions/github-script@v7
-        env:
-          PROJECT_ID: PVT_kwHODJwWRs4BGPB1
-          STATUS_FIELD_ID: PVTSSF_lAHODJwWRs4BGPB1zg3VyXg
-          OPT_DONE_COMPLETED: 98236657
-          OPT_DONE_NOT_PLANNED: 13d5fa23
-          OPT_DONE_DUPLICATE: 8356ef49
         with:
           script: |
-            const projectId = process.env.PROJECT_ID;
-            const statusFieldId = process.env.STATUS_FIELD_ID;
+            const PROJECT_ID = "PVT_kwHODJwWRs4BGPB1";
+            const STATUS_FIELD_ID = "PVTSSF_lAHODJwWRs4BGPB1zg3VyXg";
 
-            const DONE_MAP = {
-              [process.env.OPT_DONE_COMPLETED]: 'completed',
-              [process.env.OPT_DONE_NOT_PLANNED]: 'not_planned',
-              [process.env.OPT_DONE_DUPLICATE]: 'duplicate'
+            // Option IDs
+            const OPT = {
+              ENTRY:        "f75ad846",
+              IN_PROGRESS:  "47fc9ee4",
+              DONE_COMPLETED:    "98236657",
+              DONE_NOT_PLANNED:  "13d5fa23",
+              DONE_DUPLICATE:    "8356ef49",
             };
 
-            const itemNodeId = context.payload.projects_v2_item?.node_id;
-            if (!itemNodeId) {
-              return core.info('No item ID in event.');
+            // Payload basics
+            const item = context.payload.projects_v2_item;
+            if (!item) {
+              core.info("No projects_v2_item in payload; exiting.");
+              return;
             }
 
-            // Fetch the item to get current Status + linked content (issue)
-            const data = await github.graphql(`
-              query($itemId: ID!) {
+            // Only act for your project
+            if (item.project_node_id !== PROJECT_ID) {
+              core.info("Different project; ignoring.");
+              return;
+            }
+
+            // We need the Status value on this item, and the content Issue node id
+            const q = `
+              query($itemId: ID!, $statusFieldId: ID!) {
                 node(id: $itemId) {
                   ... on ProjectV2Item {
                     id
-                    project { id }
-                    content {
-                      __typename
-                      ... on Issue {
-                        id
-                        number
-                        repository { name owner { login } }
-                        state
-                        stateReason
-                      }
-                    }
-                    fieldValues(first: 20) {
-                      nodes {
-                        ... on ProjectV2ItemFieldSingleSelectValue {
-                          id
-                          field { ... on ProjectV2SingleSelectField { id name } }
-                          name
-                          optionId
-                        }
+                    content { __typename ... on Issue { id number state } }
+                    fieldValueByName(name: "Status") {
+                      ... on ProjectV2ItemFieldSingleSelectValue {
+                        field { ... on ProjectV2SingleSelectField { id name } }
+                        name
+                        optionId
                       }
                     }
                   }
                 }
+              }`;
+            const data = await github.graphql(q, { itemId: item.node_id, statusFieldId: STATUS_FIELD_ID });
+            const node = data?.node;
+            if (!node?.content || node.content.__typename !== "Issue") {
+              core.info("Item is not an Issue; ignoring.");
+              return;
+            }
+            const issueId = node.content.id;
+            const issueState = (node.content.state || "").toLowerCase();
+            const statusOptionId = node.fieldValueByName?.optionId;
+
+            // If Status is Entry / In progress: ensure issue open (but don't reopen on every tiny move)
+            async function reopenIssueIfClosed() {
+              if (issueState === "closed") {
+                await github.graphql(`mutation($id:ID!){ reopenIssue(input:{issueId:$id}){ issue { id } } }`, { id: issueId });
+                // After reopen, your other workflow will set Status → Entry (R1), but we guard loops via actor != bot
               }
-            `, { itemId: itemNodeId });
-
-            const item = data?.node;
-            if (!item || item.project?.id !== projectId) {
-              return core.info('Item is not from the configured project. Ignoring.');
             }
 
-            if (!item.content || item.content.__typename !== 'Issue') {
-              return core.info('Project item is not an Issue. Ignoring.');
+            // If Status is a Done flavor: close with matching reason
+            async function closeWithReason(reason) {
+              // GraphQL: closeIssue supports stateReason: COMPLETED | NOT_PLANNED | DUPLICATE
+              await github.graphql(
+                `mutation($id:ID!,$reason:IssueClosedStateReason!){
+                  closeIssue(input:{ issueId:$id, stateReason:$reason }){ issue { id } }
+                }`,
+                { id: issueId, reason }
+              );
             }
 
-            // Find current Status select value for this item
-            const statusVal = (item.fieldValues?.nodes || []).find(v => v.field?.id === statusFieldId);
-            if (!statusVal?.optionId) {
-              return core.info('No Status option on item. Nothing to do.');
+            if (statusOptionId === OPT.ENTRY) {
+              await reopenIssueIfClosed();
+              core.info("Status Entry → ensure issue open");
+              return;
             }
 
-            const reason = DONE_MAP[statusVal.optionId];
-            if (!reason) {
-              // Not one of the Done statuses → don't close
-              return core.info('Status is not a Done option. Leaving issue state unchanged.');
+            if (statusOptionId === OPT.IN_PROGRESS) {
+              await reopenIssueIfClosed();
+              core.info("Status In progress → ensure issue open");
+              return;
             }
 
-            // Close the linked issue with the matching reason (idempotent)
-            const { number, repository } = item.content;
-            const owner = repository.owner.login;
-            const repo = repository.name;
+            if (statusOptionId === OPT.DONE_COMPLETED) {
+              await closeWithReason("COMPLETED");
+              core.info("Status Done - Completed → closed as completed");
+              return;
+            }
 
-            // If already closed with same reason, do nothing
-            if (item.content.state === 'CLOSED' && (item.content.stateReason || '
+            if (statusOptionId === OPT.DONE_NOT_PLANNED) {
+              await closeWithReason("NOT_PLANNED");
+              core.info("Status Done - Not planned → closed as not planned");
+              return;
+            }
+
+            if (statusOptionId === OPT.DONE_DUPLICATE) {
+              await closeWithReason("DUPLICATE");
+              core.info("Status Done - Duplicate → closed as duplicate");
+              return;
+            }
+
+            core.info("Status not recognized for sync; no action.");
