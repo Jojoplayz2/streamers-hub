@@ -25,28 +25,28 @@ jobs:
 
       # Step 2: Add label based on selected category
       - name: Add Setup / Installation Label
-        if: contains(github.event.issue.body, '"category":"Setup / Installation"')
+        if: contains(github.event.issue.body, '"category":"⚙️ Setup / Installation"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: Setup / Installation
 
       - name: Add Feature Question Label
-        if: contains(github.event.issue.body, '"category":"Feature Question"')
+        if: contains(github.event.issue.body, '"category":"❓ Feature Question"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: Feature Question
 
       - name: Add Troubleshooting Label
-        if: contains(github.event.issue.body, '"category":"Troubleshooting"')
+        if: contains(github.event.issue.body, '"category":"🔧 Troubleshooting"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: Troubleshooting
 
       - name: Add Other Label
-        if: contains(github.event.issue.body, '"category":"Other"')
+        if: contains(github.event.issue.body, '"category":"💭 Other"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
