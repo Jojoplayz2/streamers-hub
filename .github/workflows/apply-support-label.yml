@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   apply_label:
-    if: contains(github.event.issue.body, 'Questions / Support')
+    if: contains(github.event.issue.body, '❓ Questions / Support')
     runs-on: ubuntu-latest
     steps:
 
