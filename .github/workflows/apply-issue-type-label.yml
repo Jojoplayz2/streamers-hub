@@ -11,6 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      # Step 1: Remove old issue type labels
+      - name: Remove old issue type labels
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            Feature Request
+            Improvement
+
+      # Step 2: Add correct label
       - name: Add Feature Request label
         if: contains(toJson(github.event.issue.body), 'Feature Request')
         uses: actions-ecosystem/action-add-labels@v1
