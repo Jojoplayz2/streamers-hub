@@ -8,8 +8,7 @@ permissions:
   issues: write
 
 jobs:
-  apply_label:
-    if: contains(github.event.issue.labels.*.name, 'Question/Support')
+  label:
     runs-on: ubuntu-latest
     steps:
 
