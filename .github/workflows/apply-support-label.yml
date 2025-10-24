@@ -25,7 +25,7 @@ jobs:
 
       # Step 2: Add label based on selected category
       - name: Add Setup / Installation Label
-        if: contains(github.event.issue.body, 'Setup / Installation')
+        if: contains(github.event.issue.body, '"Category":"Setup / Installation"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
