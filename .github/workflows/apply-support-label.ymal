@@ -1,0 +1,53 @@
+name: Apply Support Category Label
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  apply_label:
+    runs-on: ubuntu-latest
+    steps:
+
+      # Step 1: Remove old support labels
+      - name: Remove old category labels
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            Setup / Installation
+            Feature Question
+            Troubleshooting
+            Other
+
+      # Step 2: Add label based on selected category
+      - name: Add Setup / Installation Label
+        if: contains(github.event.issue.body, '"category":"Setup / Installation"')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: Setup / Installation
+
+      - name: Add Feature Question Label
+        if: contains(github.event.issue.body, '"category":"Feature Question"')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: Feature Question
+
+      - name: Add Troubleshooting Label
+        if: contains(github.event.issue.body, '"category":"Troubleshooting"')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: Troubleshooting
+
+      - name: Add Other Label
+        if: contains(github.event.issue.body, '"category":"Other"')
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: Other
