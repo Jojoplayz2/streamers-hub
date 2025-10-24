@@ -6,9 +6,6 @@ projects: ["Streamers Hub"]
 body:
   - type: markdown
     attributes:
-      value: "<!-- FORM:BUG -->"
-  - type: markdown
-    attributes:
       value: |
         Thanks for taking the time to report a bug! Please fill out the sections below so we can identify and resolve the issue as quickly as possible. 🚧
   - type: dropdown
