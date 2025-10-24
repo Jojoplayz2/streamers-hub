@@ -10,7 +10,7 @@ body:
       label: Which service does the bug relate to?
       multiple: false
       options:
-        - ◾️ Roblox Studio
+        - ◾️ Roblox
         - 🤖 Discord Bots
         - 🗃️ Discord Channel Access
     validations:
