@@ -1,0 +1,67 @@
+name: 💡 Internal Suggestion Report
+description: Submit a suggestion or request a new improvement or feature.
+title: "[Suggestion]: "
+labels: ["suggestion"]
+projects: ["Streamers Hub"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your suggestion! Please provide the details below so we can evaluate and consider your idea. 💡
+
+  - type: dropdown
+    id: service
+    attributes:
+      label: Which area does this suggestion relate to?
+      multiple: false
+      options:
+        - ◾️ Roblox
+        - 🤖 Discord
+        - 🌐 General / Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      multiple: true
+      options:
+        - Feature Request
+        - Improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Explanation of the Idea
+      description: Provide an explanation of your suggestion. And how will it affect the community positively?
+      placeholder: |
+        Example:
+        - "Add a dashboard command for staff"
+        - "Create daily quests for users"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Explain the issue, missing feature, or gap this idea addresses.
+      placeholder: |
+        Example:
+        - "Moderators have no quick way to pull user history."
+        - "Players lack goals that encourage returning daily."
+    validations:
+      required: true
+
+
+  - type: textarea
+    id: media
+    attributes:
+      label: "Relevant Media / Examples (optional)"
+      description: Include images, mockups, or links if they help describe your idea.
+      placeholder: "Attach screenshots, videos, or example links here."
+    validations:
+      required: false
