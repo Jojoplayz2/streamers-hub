@@ -1,13 +1,12 @@
-  - type: markdown
-    attributes:
-      value: "<!-- FORM:BUG -->"
-
 name: 👾 Internal Bug Report
 description: Report a bug, glitch, or unintended behavior.
 title: "[Bug]: "
 labels: ["bug"]
 projects: ["Streamers Hub"]
 body:
+  - type: markdown
+    attributes:
+      value: "<!-- FORM:BUG -->"
   - type: markdown
     attributes:
       value: |
