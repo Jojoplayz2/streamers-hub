@@ -8,7 +8,8 @@ permissions:
   issues: write
 
 jobs:
-  label:
+  apply_label:
+    if: contains(github.event.issue.body, 'Questions / Support')
     runs-on: ubuntu-latest
     steps:
 
@@ -25,7 +26,7 @@ jobs:
 
       # Step 2: Add label based on selected category
       - name: Add Setup / Installation Label
-        if: contains(github.event.issue.body, '"Category":"Setup / Installation"')
+        if: contains(github.event.issue.body, '"category":"Setup / Installation"')
         uses: actions-ecosystem/action-add-labels@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
