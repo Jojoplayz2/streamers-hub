@@ -56,7 +56,7 @@ body:
         3. Scroll down to '...'
         4. Error appears
     validations:
-      required: false
+      required: true
 
   - type: textarea
     id: media
