@@ -1,0 +1,64 @@
+name: ❓ Questions / Support
+description: Ask a question or request support for setup, features, or troubleshooting.
+labels: ["Question/Support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! Please fill out the information below so we can assist you faster. 🚑
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What is your question or issue?
+      description: Clearly describe what you need help with.
+      placeholder: |
+        Example:
+        - "How do I configure X?"
+        - "I don’t understand how Feature Y works."
+        - "I need help troubleshooting Z."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Setup / Installation
+        - Feature Question
+        - Troubleshooting
+        - Configuration Help
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps you've already tried (if applicable)
+      description: This helps prevent repeated suggestions.
+      placeholder: |
+        Example:
+        - Restarted
+        - Reinstalled
+        - Followed docs guide
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment (optional)
+      placeholder: "Example: Windows 11, macOS, Node v18, Browser, etc."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context or screenshots
+      description: Add any visuals or extra info that may help us understand the issue.
+      placeholder: "Screenshots, logs, or further comments"
+    validations:
+      required: false
