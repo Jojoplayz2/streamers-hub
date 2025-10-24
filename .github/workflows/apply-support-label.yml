@@ -8,7 +8,7 @@ permissions:
   issues: write
 
 jobs:
-  apply_label:
+  label:
     runs-on: ubuntu-latest
     steps:
 
