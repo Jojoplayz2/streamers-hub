@@ -14,10 +14,10 @@ body:
       label: Category
       multiple: false
       options:
-        - Setup / Installation
-        - Feature Question
-        - Troubleshooting
-        - Other
+        - ⚙️ Setup / Installation
+        - ❓ Feature Question
+        - 🔧 Troubleshooting
+        - 💭 Other
     validations:
       required: true
 
