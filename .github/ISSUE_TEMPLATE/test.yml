@@ -27,10 +27,10 @@ body:
       label: Severity Level
       description: How serious is this issue?
       options:
-        - Critical (system broken, major impact)
-        - High (feature broken, large impact)
-        - Moderate (bug affects usage)
-        - Low (minor bug, does not affect functionality)
+        - "Critical (system broken, major impact)"
+        - "High (feature broken, large impact)"
+        - "Moderate (bug affects usage)"
+        - "Low (minor bug, does not affect functionality)"
     validations:
       required: true
 
