@@ -27,8 +27,8 @@ body:
       label: Issue Type
       multiple: true
       options:
-        - Feature Request
-        - Improvement
+        - 🧩 Feature Request
+        - 📈 Improvement
     validations:
       required: true
 
