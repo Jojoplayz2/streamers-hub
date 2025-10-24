@@ -1,6 +1,7 @@
 name: ❓ Questions / Support
 description: Ask a question or request support for setup, features, or troubleshooting.
-labels: ["Question/Support"]
+title: "[Support] "
+labels: ["question/support"]
 body:
   - type: markdown
     attributes:
