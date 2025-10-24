@@ -1,5 +1,5 @@
-name: 👾 Internal Bug Report
-description: File an internal bug report.
+name: 👾 Bug Report
+description: Report a bug, glitch, or unintended behavior.
 title: "[Bug]: "
 labels: ["bug"]
 projects: ["Streamers Hub"]
